@@ -1,0 +1,43 @@
+input:
+  generate:
+    interval: 250ms
+    mapping: |
+      root.event_id = uuid_v4()
+      root.schema_version = 1
+      root.event_time = now()
+
+      root.user_id = "user-" + random_int(min: 1, max: 10000).string()
+      root.session_id = "session-" + random_int(min: 1, max: 3000).string()
+
+      root.source = [
+        "web",
+        "ios",
+        "android"
+      ].index(random_int(min: 0, max: 2))
+
+      root.event_type = [
+        "product_viewed",
+        "product_searched",
+        "product_added_to_cart",
+        "checkout_started"
+      ].index(random_int(min: 0, max: 3))
+
+      root.payload.product_id = "product-" + random_int(min: 1, max: 500).string()
+
+      root.payload.category = [
+        "electronics",
+        "books",
+        "sports",
+        "home",
+        "fashion"
+      ].index(random_int(min: 0, max: 4))
+
+      root.payload.price = random_int(min: 10, max: 1500)
+
+      root.payload.currency = "EUR"
+
+output:
+  redpanda:
+    seed_brokers:
+      - redpanda:9092
+    topic: product-events

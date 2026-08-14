@@ -20,6 +20,40 @@ services:
     volumes:
       - redpanda-data:/var/lib/redpanda/data
 
+  redpanda-init:
+    image: redpandadata/redpanda:latest
+    container_name: pulsehouse-redpanda-init
+    depends_on:
+      - redpanda
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until rpk cluster info -X brokers=redpanda:9092 >/dev/null 2>&1; do
+          sleep 1
+        done
+        rpk topic create product-events \
+          -X brokers=redpanda:9092 \
+          --partitions 1 \
+          --replicas 1 \
+          --if-not-exists
+
+  redpanda-connect:
+    image: docker.redpanda.com/redpandadata/connect:latest
+    container_name: pulsehouse-connect
+
+    depends_on:
+      redpanda-init:
+        condition: service_completed_successfully
+
+    command:
+      - run
+      - /connect/product-events.yaml
+
+    volumes:
+      - ./connect:/connect
+
+    restart: unless-stopped
+
   clickhouse:
     image: clickhouse/clickhouse-server:latest
     container_name: pulsehouse-clickhouse
