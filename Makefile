@@ -1,4 +1,4 @@
-.PHONY: up down restart logs ps clean clickhouse consume-products connect-logs raw-count raw-events kafka-consumers domain-count domain-events event-stats ingestion-latency
+.PHONY: up down restart logs ps clean clickhouse consume-products connect-logs raw-count raw-events kafka-consumers domain-count domain-events event-stats ingestion-latency ci
 
 up:
 	docker compose up -d
@@ -63,3 +63,19 @@ ingestion-latency:
 	docker compose exec clickhouse \
 		clickhouse-client \
 		--query "SELECT round(avg(ingestion_delay_ms),2) avg_ms, round(quantile(0.95)(ingestion_delay_ms),2) p95_ms FROM pulsehouse.product_events"
+
+ci:
+	docker compose config --quiet
+	docker compose up -d
+	i=0; until docker compose exec -T clickhouse clickhouse-client --query "SELECT 1" >/dev/null 2>&1; do \
+		i=$$((i + 1)); \
+		if [ "$$i" -ge 60 ]; then exit 1; fi; \
+		sleep 2; \
+	done
+	i=0; until [ "$$(docker compose exec -T clickhouse clickhouse-client --query "SELECT count() FROM pulsehouse.product_events" 2>/dev/null || echo 0)" -gt 0 ]; do \
+		i=$$((i + 1)); \
+		if [ "$$i" -ge 60 ]; then exit 1; fi; \
+		sleep 2; \
+	done
+	docker compose exec -T redpanda rpk topic describe product-events
+	docker compose exec -T clickhouse clickhouse-client --query "SELECT count() FROM pulsehouse.product_events"
