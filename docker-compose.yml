@@ -1,8 +1,8 @@
 services:
 
-  redpanda:
+  redpanda-0:
     image: redpandadata/redpanda:latest
-    container_name: pulsehouse-redpanda
+    container_name: pulsehouse-redpanda-0
     command:
       - redpanda
       - start
@@ -13,28 +13,79 @@ services:
       - --node-id=0
       - --check=false
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --advertise-kafka-addr=internal://redpanda-0:9092,external://localhost:19092
+      - --rpc-addr=redpanda-0:33145
+      - --advertise-rpc-addr=redpanda-0:33145
     ports:
       - "19092:19092"
       - "9644:9644"
     volumes:
-      - redpanda-data:/var/lib/redpanda/data
+      - redpanda-0-data:/var/lib/redpanda/data
+
+  redpanda-1:
+    image: redpandadata/redpanda:latest
+    container_name: pulsehouse-redpanda-1
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=1
+      - --check=false
+      - --seeds=redpanda-0:33145
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19093
+      - --advertise-kafka-addr=internal://redpanda-1:9092,external://localhost:19093
+      - --rpc-addr=redpanda-1:33145
+      - --advertise-rpc-addr=redpanda-1:33145
+    ports:
+      - "19093:19093"
+      - "9645:9644"
+    volumes:
+      - redpanda-1-data:/var/lib/redpanda/data
+
+  redpanda-2:
+    image: redpandadata/redpanda:latest
+    container_name: pulsehouse-redpanda-2
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=2
+      - --check=false
+      - --seeds=redpanda-0:33145
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19094
+      - --advertise-kafka-addr=internal://redpanda-2:9092,external://localhost:19094
+      - --rpc-addr=redpanda-2:33145
+      - --advertise-rpc-addr=redpanda-2:33145
+    ports:
+      - "19094:19094"
+      - "9646:9644"
+    volumes:
+      - redpanda-2-data:/var/lib/redpanda/data
 
   redpanda-init:
     image: redpandadata/redpanda:latest
     container_name: pulsehouse-redpanda-init
     depends_on:
-      - redpanda
+      - redpanda-0
+      - redpanda-1
+      - redpanda-2
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        until rpk cluster info -X brokers=redpanda:9092 >/dev/null 2>&1; do
+        BROKERS=redpanda-0:9092,redpanda-1:9092,redpanda-2:9092
+        until rpk cluster info -X brokers=$$BROKERS | grep -q "redpanda-2"; do
           sleep 1
         done
         rpk topic create product-events \
-          -X brokers=redpanda:9092 \
-          --partitions 1 \
-          --replicas 1 \
+          -X brokers=$$BROKERS \
+          --partitions 6 \
+          --replicas 3 \
           --if-not-exists
 
   redpanda-connect:
@@ -65,5 +116,7 @@ services:
       - ./clickhouse/init:/docker-entrypoint-initdb.d
 
 volumes:
-  redpanda-data:
+  redpanda-0-data:
+  redpanda-1-data:
+  redpanda-2-data:
   clickhouse-data:

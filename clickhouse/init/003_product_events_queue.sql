@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS pulsehouse.product_events_queue
 )
 ENGINE = Kafka
 SETTINGS
-    kafka_broker_list = 'redpanda:9092',
+    kafka_broker_list = 'redpanda-0:9092,redpanda-1:9092,redpanda-2:9092',
     kafka_topic_list = 'product-events',
     kafka_group_name = 'pulsehouse-clickhouse-product-events',
     kafka_format = 'JSONEachRow',

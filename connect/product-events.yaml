@@ -39,5 +39,7 @@ input:
 output:
   redpanda:
     seed_brokers:
-      - redpanda:9092
+      - redpanda-0:9092
+      - redpanda-1:9092
+      - redpanda-2:9092
     topic: product-events

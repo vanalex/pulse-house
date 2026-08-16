@@ -22,7 +22,7 @@ clean:
 	docker compose down -v
 
 consume-products:
-	docker compose exec redpanda \
+	docker compose exec redpanda-0 \
 		rpk topic consume product-events
 
 connect-logs:
@@ -77,5 +77,5 @@ ci:
 		if [ "$$i" -ge 60 ]; then exit 1; fi; \
 		sleep 2; \
 	done
-	docker compose exec -T redpanda rpk topic describe product-events
+	docker compose exec -T redpanda-0 rpk topic describe product-events
 	docker compose exec -T clickhouse clickhouse-client --query "SELECT count() FROM pulsehouse.product_events"
